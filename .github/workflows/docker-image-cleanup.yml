@@ -1,0 +1,40 @@
+name: Docker Image CI Cleanup
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: "0 0 * * *"
+
+permissions: write-all
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    environment: development
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@c95a14d0e5bab51a9f56296a4eb0e416910cd350 # v2.10.3
+        with:
+          egress-policy: audit
+
+      - name: Checkout the repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Get the repository name lowercase
+        run: echo "REPO_NAME=$(echo '${{ github.repository }}' | cut -d'/' -f2 | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
+      - uses: snok/container-retention-policy@4f22ef80902ad409ed55a99dc5133cc1250a0d03 # v3.0.0
+        with:
+          account: user
+          token: ${{ secrets.PAT_DEL_TOKEN }}
+          image-names: "${{ env.REPO_NAME }}"
+          image-tags: "*"
+          cut-off: 1w
+          keep-n-most-recent: 5
+          dry-run: false
